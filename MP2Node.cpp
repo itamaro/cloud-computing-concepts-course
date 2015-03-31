@@ -5,6 +5,10 @@
  **********************************/
 #include "MP2Node.h"
 
+#include <sstream>
+static stringstream my_stream2;
+#define MYLOG2(stream) my_stream2 << "{N" << memberNode->addr.getAddress() << " @" << par->getcurrtime() << "} " << stream << "\n"
+
 /**
  * constructor
  */
@@ -52,7 +56,11 @@ void MP2Node::updateRing() {
 	// Sort the list based on the hashCode
 	sort(curMemList.begin(), curMemList.end());
 
-
+  string mlist("Members list: ");
+  for (auto member : curMemList) {
+    mlist += member.nodeAddress.getAddress() + ", ";
+  }
+  MYLOG2(mlist);
 	/*
 	 * Step 3: Run the stabilization protocol IF REQUIRED
 	 */
