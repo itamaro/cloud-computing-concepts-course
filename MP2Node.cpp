@@ -88,6 +88,8 @@ vector<Node> MP2Node::getMembershipList() {
 		memcpy(&addressOfThisMember.addr[4], &port, sizeof(short));
 		curMemList.emplace_back(Node(addressOfThisMember));
 	}
+  // also inject my self
+  curMemList.emplace_back(Node(this->memberNode->addr));
 	return curMemList;
 }
 
