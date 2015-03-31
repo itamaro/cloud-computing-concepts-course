@@ -306,6 +306,10 @@ void MP1Node::addNodeFromNotification(Notification notification) {
   assert(getNode(notification.addr) == nodes.end());
   MyNode node(notification.addr, notification.type, notification.stateTimestamp, notification.incarnation);
   nodes.push_back(node);
+  MemberListEntry mle;
+	memcpy(&mle.id, &node.addr.addr[0], sizeof(int));
+	memcpy(&mle.port, &node.addr.addr[4], sizeof(short));
+  memberNode->memberList.push_back(mle);
   log->logNodeAdd(&memberNode->addr, &node.addr);
   MYLOG("Added node after processing notification " << notification.toString());
 
@@ -538,6 +542,18 @@ void MP1Node::nodeLoopOps() {
     MYLOG("Removing FAILED node " << node_it->addr.getAddress());
     assert(getRemovedNodeIncarnation(node_it->addr) == 0);
     removed_nodes.push_back(*node_it);
+
+    int id;
+    short port;
+  	memcpy(&id, &node_it->addr.addr[0], sizeof(int));
+  	memcpy(&port, &node_it->addr.addr[4], sizeof(short));
+    for (auto mle_it = memberNode->memberList.begin(); mle_it != memberNode->memberList.end(); mle_it++) {
+      if (mle_it->id == id && mle_it->port == port) {
+        memberNode->memberList.erase(mle_it);
+        break;
+      }
+    }
+    
     log->logNodeRemove(&memberNode->addr, &node_it->addr);
     nodes.erase(node_it);
   }
