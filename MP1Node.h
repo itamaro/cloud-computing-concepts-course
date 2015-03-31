@@ -107,7 +107,7 @@ enum SwimStates {
   IndirectPingsSent
 };
 
-class Node {
+class MyNode {
  public:
 	Address addr;
   NodeStates state;
@@ -115,7 +115,7 @@ class Node {
   unsigned incarnation;
   long timeToRemove;
   
-  Node(const Address& addr, NodeStates state, long stateTime, unsigned incarnation)
+  MyNode(const Address& addr, NodeStates state, long stateTime, unsigned incarnation)
     : addr(addr),
       state(state),
       stateTime(stateTime),
@@ -134,8 +134,8 @@ class MP1Node {
 	Log *log;
 	Params *par;
 	Member *memberNode;
-  vector<Node> nodes;
-  vector<Node> removed_nodes;
+  vector<MyNode> nodes;
+  vector<MyNode> removed_nodes;
   list<Notification> notifications;
 	char NULLADDR[6];
   int timeToNextPing;
@@ -147,7 +147,7 @@ class MP1Node {
   void addNodeFromNotification(Notification notification);
   bool processNotification(Notification notification);
   void processNotifications(char * data_begin, char * data_end);
-  vector<Node>::iterator getNode(Address addr);
+  vector<MyNode>::iterator getNode(Address addr);
   unsigned getRemovedNodeIncarnation(Address addr);
   void insertNotification(const Notification& notification);
   void garbageCollectNotifications();

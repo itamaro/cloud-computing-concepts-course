@@ -239,8 +239,8 @@ int MP1Node::sendMessage(Address* dest_addr, MsgTypes msg_type) {
   return ret;
 }
 
-vector<Node>::iterator MP1Node::getNode(Address addr) {
-  vector<Node>::iterator it;
+vector<MyNode>::iterator MP1Node::getNode(Address addr) {
+  vector<MyNode>::iterator it;
   for (it = nodes.begin(); it != nodes.end(); ++it) {
     if (it->addr == addr) {
       // got it
@@ -253,7 +253,7 @@ vector<Node>::iterator MP1Node::getNode(Address addr) {
 // returns 0 if no node with address addr in removed nodes
 // otherwise returns incarnation number (1..)
 unsigned MP1Node::getRemovedNodeIncarnation(Address addr) {
-  vector<Node>::iterator it;
+  vector<MyNode>::iterator it;
   for (auto& node : removed_nodes) {
     if (node.addr == addr) {
       // got it
@@ -304,7 +304,7 @@ void MP1Node::garbageCollectNotifications() {
 void MP1Node::addNodeFromNotification(Notification notification) {
   // I'm assuming this node is not in my current nodes list
   assert(getNode(notification.addr) == nodes.end());
-  Node node(notification.addr, notification.type, notification.stateTimestamp, notification.incarnation);
+  MyNode node(notification.addr, notification.type, notification.stateTimestamp, notification.incarnation);
   nodes.push_back(node);
   log->logNodeAdd(&memberNode->addr, &node.addr);
   MYLOG("Added node after processing notification " << notification.toString());
@@ -467,7 +467,7 @@ bool MP1Node::recvCallBack(void *env, char *data, int size) {
 void MP1Node::nodeLoopOps() {
   --timeToNextPing;
 
-  list<vector<Node>::iterator> to_remove;
+  list<vector<MyNode>::iterator> to_remove;
   // check for nodes with expired timeouts (doing this before SWIM and after processing received messages, so decisions are up-to-date, and generated notifications will be able to piggyback on SWIM messages)
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
     bool fail = false;
@@ -498,7 +498,7 @@ void MP1Node::nodeLoopOps() {
       // pick node to ping
       if (!nodes.empty()) {
         int member_idx = rand() % nodes.size();
-        Node& node = nodes[member_idx];
+        MyNode& node = nodes[member_idx];
         directPingAddr = node.addr;
         pingTimeout = TFAIL;
         swimState = DirectPingSent;
