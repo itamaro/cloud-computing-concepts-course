@@ -125,6 +125,7 @@ size_t MP2Node::hashFunction(string key) {
  */
 void MP2Node::clientCreate(string key, string value) {
   int transID = transaction_keys.size();
+  transaction_type[transID] = CREATE;
   transaction_keys[transID] = key;
   transaction_values[transID] = value;
   auto replicas = findNodes(key);
@@ -186,6 +187,19 @@ void MP2Node::clientDelete(string key){
 	/*
 	 * Implement this
 	 */
+  int transID = transaction_keys.size();
+  transaction_type[transID] = DELETE;
+  transaction_keys[transID] = key;
+  auto replicas = findNodes(key);
+  for (auto replica : replicas) {
+    Message msgDelete(
+      transID,  // transID
+      memberNode->addr,  // source address (me!)
+      DELETE,  // message type
+      key
+    );
+    int ret = emulNet->ENsend(&memberNode->addr, &replica.nodeAddress, msgDelete.toString());
+  }
 }
 
 /**
@@ -247,6 +261,7 @@ bool MP2Node::deletekey(string key) {
 	 * Implement this
 	 */
 	// Delete the key from the local hash table
+  return ht->deleteKey(key);
 }
 
 /**
@@ -294,6 +309,18 @@ void MP2Node::checkMessages() {
         emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
         break;
       }
+      
+      case DELETE: {
+        bool success = deletekey(message.key);
+        if (success) {
+          log->logDeleteSuccess(&message.fromAddr, false, message.transID, message.key);
+        } else {
+          log->logDeleteFail(&message.fromAddr, false, message.transID, message.key);
+        }
+        Message reply(message.transID, message.fromAddr, REPLY, success);
+        emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
+        break;
+      }
     
       case REPLY: {
         if (completed_transactions.find(message.transID) == completed_transactions.end() && message.success) {
@@ -301,7 +328,17 @@ void MP2Node::checkMessages() {
           if (transactions[message.transID].size() >= QUORUM) {
             MYLOG2("Got success quorum for transaction " << message.transID);
             completed_transactions.insert(message.transID);
-            log->logCreateSuccess(&memberNode->addr, true, message.transID, transaction_keys[message.transID], transaction_values[message.transID]);
+            switch (transaction_type[message.transID]) {
+              case CREATE: {
+                log->logCreateSuccess(&memberNode->addr, true, message.transID, transaction_keys[message.transID], transaction_values[message.transID]);
+                break;
+              }
+              
+              case DELETE: {
+                log->logDeleteSuccess(&message.fromAddr, true, message.transID, transaction_keys[message.transID]);
+                break;
+              }
+            }
           }
         }
         break;

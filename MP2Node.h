@@ -58,6 +58,7 @@ private:
   
   map<int, string> transaction_keys;
   map<int, string> transaction_values;
+  map<int, MessageType> transaction_type;
   set<int> completed_transactions;
 
 public:
