@@ -10,6 +10,8 @@
 /**
  * Header files
  */
+#include <set>
+
 #include "stdincludes.h"
 #include "EmulNet.h"
 #include "Node.h"
@@ -18,6 +20,10 @@
 #include "Params.h"
 #include "Message.h"
 #include "Queue.h"
+
+using std::set;
+
+#define QUORUM 2
 
 /**
  * CLASS NAME: MP2Node
@@ -47,6 +53,12 @@ private:
 	EmulNet * emulNet;
 	// Object of Log
 	Log * log;
+  
+  map<int, vector<Address> > transactions;
+  
+  map<int, string> transaction_keys;
+  map<int, string> transaction_values;
+  set<int> completed_transactions;
 
 public:
 	MP2Node(Member *memberNode, Params *par, EmulNet *emulNet, Log *log, Address *addressOfMember);

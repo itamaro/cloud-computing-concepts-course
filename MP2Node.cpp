@@ -56,11 +56,17 @@ void MP2Node::updateRing() {
 	// Sort the list based on the hashCode
 	sort(curMemList.begin(), curMemList.end());
 
-  string mlist("Members list: ");
+  stringstream mlist;
   for (auto member : curMemList) {
-    mlist += member.nodeAddress.getAddress() + ", ";
+    mlist << member.nodeAddress.getAddress() << "(" << member.nodeHashCode << "),";
   }
-  MYLOG2(mlist);
+  
+  if (ring.empty()) {
+    MYLOG2("initializing ring from membership list: " + mlist.str());
+    for (auto node : curMemList) {
+      ring.push_back(node);
+    }
+  }
 	/*
 	 * Step 3: Run the stabilization protocol IF REQUIRED
 	 */
@@ -118,9 +124,23 @@ size_t MP2Node::hashFunction(string key) {
  * 				3) Sends a message to the replica
  */
 void MP2Node::clientCreate(string key, string value) {
-	/*
-	 * Implement this
-	 */
+  int transID = transaction_keys.size();
+  transaction_keys[transID] = key;
+  transaction_values[transID] = value;
+  auto replicas = findNodes(key);
+  ReplicaType repType = PRIMARY;
+  for (auto replica : replicas) {
+    Message msgCreate(
+      transID,  // transID
+      memberNode->addr,  // source address (me!)
+      CREATE,  // message type
+      key,
+      value,
+      repType  // replica type
+    );
+    repType = (ReplicaType)(((int)repType) + 1);
+    int ret = emulNet->ENsend(&memberNode->addr, &replica.nodeAddress, msgCreate.toString());
+  }
 }
 
 /**
@@ -181,6 +201,7 @@ bool MP2Node::createKeyValue(string key, string value, ReplicaType replica) {
 	 * Implement this
 	 */
 	// Insert key, value, replicaType into the hash table
+  return ht->create(key, value);
 }
 
 /**
@@ -256,12 +277,40 @@ void MP2Node::checkMessages() {
 		size = memberNode->mp2q.front().size;
 		memberNode->mp2q.pop();
 
-		string message(data, data + size);
-
+		string message_str(data, data + size);
+    Message message(message_str);
 		/*
 		 * Handle the message types here
 		 */
-
+    switch(message.type) {
+      case CREATE: {
+        bool success = createKeyValue(message.key, message.value, message.replica);
+        if (success) {
+          log->logCreateSuccess(&message.fromAddr, false, message.transID, message.key, message.value);
+        } else {
+          log->logCreateFail(&message.fromAddr, false, message.transID, message.key, message.value);
+        }
+        Message reply(message.transID, message.fromAddr, REPLY, success);
+        emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
+        break;
+      }
+    
+      case REPLY: {
+        if (completed_transactions.find(message.transID) == completed_transactions.end() && message.success) {
+          transactions[message.transID].push_back(message.fromAddr);
+          if (transactions[message.transID].size() >= QUORUM) {
+            MYLOG2("Got success quorum for transaction " << message.transID);
+            completed_transactions.insert(message.transID);
+            log->logCreateSuccess(&memberNode->addr, true, message.transID, transaction_keys[message.transID], transaction_values[message.transID]);
+          }
+        }
+        break;
+      }
+    
+      default: {
+        MYLOG2("don't know what to do with message " << message_str);
+      }
+    }
 	}
 
 	/*
