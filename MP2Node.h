@@ -24,6 +24,7 @@
 using std::set;
 
 #define QUORUM 2
+#define TRANS_TIMEOUT 3
 
 /**
  * CLASS NAME: MP2Node
@@ -62,6 +63,8 @@ private:
   map<int, string> transaction_values;
   map<int, MessageType> transaction_type;
   set<int> completed_transactions;
+  
+  map<int, vector<int> > transaction_timeout;
 
 public:
 	MP2Node(Member *memberNode, Params *par, EmulNet *emulNet, Log *log, Address *addressOfMember);

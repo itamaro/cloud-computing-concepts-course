@@ -128,6 +128,7 @@ void MP2Node::clientCreate(string key, string value) {
   transaction_type[transID] = CREATE;
   transaction_keys[transID] = key;
   transaction_values[transID] = value;
+  transaction_timeout[par->getcurrtime() + TRANS_TIMEOUT].push_back(transID);
   auto replicas = findNodes(key);
   ReplicaType repType = PRIMARY;
   for (auto replica : replicas) {
@@ -160,6 +161,7 @@ void MP2Node::clientRead(string key){
   int transID = transaction_keys.size();
   transaction_type[transID] = READ;
   transaction_keys[transID] = key;
+  transaction_timeout[par->getcurrtime() + TRANS_TIMEOUT].push_back(transID);
   auto replicas = findNodes(key);
   for (auto replica : replicas) {
     Message msgRead(
@@ -203,6 +205,7 @@ void MP2Node::clientDelete(string key){
   int transID = transaction_keys.size();
   transaction_type[transID] = DELETE;
   transaction_keys[transID] = key;
+  transaction_timeout[par->getcurrtime() + TRANS_TIMEOUT].push_back(transID);
   auto replicas = findNodes(key);
   for (auto replica : replicas) {
     Message msgDelete(
@@ -423,6 +426,25 @@ void MP2Node::checkMessages() {
       }
     }
 	}
+  
+  for (auto transID : transaction_timeout[par->getcurrtime()]) {
+    if (completed_transactions.find(transID) == completed_transactions.end()) {
+      MYLOG2("timeout for transaction " << transID);
+      switch (transaction_type[transID]) {
+        case CREATE:
+          log->logCreateFail(&memberNode->addr, true, transID, transaction_keys[transID], transaction_values[transID]);
+          break;
+        
+        case READ:
+          log->logReadFail(&memberNode->addr, true, transID, transaction_keys[transID]);
+          break;
+        
+        case DELETE:
+          log->logDeleteFail(&memberNode->addr, true, transID, transaction_keys[transID]);
+          break;
+      } 
+    }
+  }
 
 	/*
 	 * This function should also ensure all READ and UPDATE operation
