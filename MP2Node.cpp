@@ -323,19 +323,41 @@ void MP2Node::checkMessages() {
       }
     
       case REPLY: {
-        if (completed_transactions.find(message.transID) == completed_transactions.end() && message.success) {
+        MYLOG2("Got REPLY message from " << message.fromAddr.getAddress() << " transaction id: " << message.transID);
+        if (completed_transactions.find(message.transID) == completed_transactions.end()) {
           transactions[message.transID].push_back(message.fromAddr);
-          if (transactions[message.transID].size() >= QUORUM) {
-            MYLOG2("Got success quorum for transaction " << message.transID);
+          bool fail_quorum=false, success_quorum=false;
+          if (message.success) {
+            success_replies[message.transID].push_back(message.fromAddr);
+            if (success_replies[message.transID].size() >= QUORUM) {
+              success_quorum = true;
+              MYLOG2("Got success quorum for transaction " << message.transID);
+            }
+          } else {
+            fail_replies[message.transID].push_back(message.fromAddr);
+            if (fail_replies[message.transID].size() >= QUORUM) {
+              fail_quorum = true;
+              MYLOG2("Got failure quorum for transaction " << message.transID);
+            }
+          }
+          if (success_quorum || fail_quorum) {
             completed_transactions.insert(message.transID);
             switch (transaction_type[message.transID]) {
               case CREATE: {
-                log->logCreateSuccess(&memberNode->addr, true, message.transID, transaction_keys[message.transID], transaction_values[message.transID]);
+                if (success_quorum) {
+                  log->logCreateSuccess(&memberNode->addr, true, message.transID, transaction_keys[message.transID], transaction_values[message.transID]);
+                } else {
+                  log->logCreateFail(&memberNode->addr, true, message.transID, transaction_keys[message.transID], transaction_values[message.transID]);
+                }
                 break;
               }
               
               case DELETE: {
-                log->logDeleteSuccess(&message.fromAddr, true, message.transID, transaction_keys[message.transID]);
+                if (success_quorum) {
+                  log->logDeleteSuccess(&message.fromAddr, true, message.transID, transaction_keys[message.transID]);
+                } else {
+                  log->logDeleteFail(&message.fromAddr, true, message.transID, transaction_keys[message.transID]);
+                }
                 break;
               }
             }
