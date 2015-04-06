@@ -352,20 +352,21 @@ void MP2Node::checkMessages() {
       
       case READREPLY: {
         if (completed_transactions.find(message.transID) == completed_transactions.end()) {
+          string key = transaction_keys[message.transID];
           if (message.value.empty()) {
             MYLOG2("Got bad READREPLY on transaction " << message.transID);
             fail_replies[message.transID].push_back(message.fromAddr);
             if (fail_replies[message.transID].size() >= QUORUM) {
-              MYLOG2("fail quorum for read on key " << message.key << " transaction " << message.transID);
-              log->logReadFail(&memberNode->addr, true, message.transID, message.key);
+              MYLOG2("fail quorum for read on key " << key << " transaction " << message.transID);
+              log->logReadFail(&memberNode->addr, true, message.transID, key);
               completed_transactions.insert(message.transID);
             }
           } else {
             MYLOG2("Got good READREPLY on transaction " << message.transID << ", value: " << message.value);
             success_replies[message.transID].push_back(message.fromAddr);
             if (success_replies[message.transID].size() >= QUORUM) {
-              MYLOG2("success quorum for read on key " << message.key << " transaction " << message.transID);
-              log->logReadSuccess(&memberNode->addr, true, message.transID, message.key, message.value);
+              MYLOG2("success quorum for read on key " << key << " transaction " << message.transID);
+              log->logReadSuccess(&memberNode->addr, true, message.transID, key, message.value);
               completed_transactions.insert(message.transID);
             }
           }
