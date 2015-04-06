@@ -157,6 +157,19 @@ void MP2Node::clientRead(string key){
 	/*
 	 * Implement this
 	 */
+  int transID = transaction_keys.size();
+  transaction_type[transID] = READ;
+  transaction_keys[transID] = key;
+  auto replicas = findNodes(key);
+  for (auto replica : replicas) {
+    Message msgRead(
+      transID,  // transID
+      memberNode->addr,  // source address (me!)
+      READ,  // message type
+      key
+    );
+    int ret = emulNet->ENsend(&memberNode->addr, &replica.nodeAddress, msgRead.toString());
+  }
 }
 
 /**
@@ -231,6 +244,7 @@ string MP2Node::readKey(string key) {
 	 * Implement this
 	 */
 	// Read key from local hash table and return value
+  return ht->read(key);
 }
 
 /**
@@ -310,6 +324,20 @@ void MP2Node::checkMessages() {
         break;
       }
       
+      case READ: {
+        string value = readKey(message.key);
+        if (value.empty()) {
+          MYLOG2("Read for key " << message.key << " failed");
+          log->logReadFail(&memberNode->addr, false, message.transID, message.key);
+        } else {
+          MYLOG2("Read for key " << message.key << " OK - value: " << value);
+          log->logReadSuccess(&memberNode->addr, false, message.transID, message.key, value);
+        }
+        Message reply(message.transID, message.fromAddr, value);
+        emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
+        break;
+      }
+      
       case DELETE: {
         bool success = deletekey(message.key);
         if (success) {
@@ -319,6 +347,27 @@ void MP2Node::checkMessages() {
         }
         Message reply(message.transID, message.fromAddr, REPLY, success);
         emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
+        break;
+      }
+      
+      case READREPLY: {
+        if (completed_transactions.find(message.transID) == completed_transactions.end()) {
+          if (message.value.empty()) {
+            MYLOG2("Got bad READREPLY on transaction " << message.transID);
+            fail_replies[message.transID].push_back(message.fromAddr);
+            if (fail_replies[message.transID].size() >= QUORUM) {
+              MYLOG2("fail quorum for read on key " << message.key << " transaction " << message.transID);
+              log->logReadFail(&memberNode->addr, true, message.transID, message.key);
+            }
+          } else {
+            MYLOG2("Got good READREPLY on transaction " << message.transID << ", value: " << message.value);
+            success_replies[message.transID].push_back(message.fromAddr);
+            if (success_replies[message.transID].size() >= QUORUM) {
+              MYLOG2("success quorum for read on key " << message.key << " transaction " << message.transID);
+              log->logReadSuccess(&memberNode->addr, true, message.transID, message.key, message.value);
+            }
+          }
+        }
         break;
       }
     
