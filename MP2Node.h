@@ -55,6 +55,8 @@ private:
 	Log * log;
   
   map<int, vector<Address> > transactions;
+  map<int, vector<Address> > success_replies;
+  map<int, vector<Address> > fail_replies;
   
   map<int, string> transaction_keys;
   map<int, string> transaction_values;
