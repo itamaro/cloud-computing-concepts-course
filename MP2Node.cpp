@@ -9,27 +9,6 @@
 static stringstream my_stream2;
 #define MYLOG2(stream) my_stream2 << "{N" << memberNode->addr.getAddress() << " @" << par->getcurrtime() << "} " << stream << "\n"
 
-// string reprNodes(vector<Node> nodes) {
-//   stringstream mlist;
-//   for (auto node : nodes) {
-//     mlist << node.nodeAddress.getAddress() << "(" << node.nodeHashCode << "),";
-//   }
-//   return mlist.str();
-// }
-//
-// bool compare_nodes_vecs(vector<Node> vec1, vector<Node> vec2) {
-//   if (vec1.size() != 2 || vec2.size() != 2) {
-//     return false;
-//   }
-//   if (vec1[0].nodeAddress == vec2[0].nodeAddress && vec1[1].nodeAddress == vec2[1].nodeAddress) {
-//     return true;
-//   }
-//   if (vec1[0].nodeAddress == vec2[1].nodeAddress && vec1[1].nodeAddress == vec2[0].nodeAddress) {
-//     return true;
-//   }
-//   return false;
-// }
-
 /**
  * constructor
  */
@@ -179,39 +158,6 @@ void MP2Node::updateRing() {
         int ret = emulNet->ENsend(&memberNode->addr, &has_my_secondary.nodeAddress, msgCreate.toString());
       }
     }
-    
-    
-//     if (hasMyReplicas.empty()) {
-//       hasMyReplicas.push_back(after_me[0]);
-//       hasMyReplicas.push_back(after_me[1]);
-//     } else {
-//       assert(hasMyReplicas.size() == 2);
-//       //MYLOG2("has my replicas: " << reprNodes(hasMyReplicas));
-//       vector<Node> newReplicaNodes;
-//       for (int i=0; i < 2; ++i) {
-//         auto node = after_me[i];
-//         MYLOG2("checking node " << node.nodeAddress.getAddress());
-//         hasMyReplicas.push_back(node);
-//         if (!(node.nodeAddress == hasMyReplicas[0].nodeAddress) && !(node.nodeAddress == hasMyReplicas[1].nodeAddress)) {
-//           MYLOG2("ring change affected nodes that have my replicas - need to replicate my keys to node " << node.nodeAddress.getAddress());
-//           newReplicaNodes.push_back(node);
-//         }
-//       }
-//       hasMyReplicas.erase(hasMyReplicas.begin(), hasMyReplicas.begin()+2);
-//     }
-//     if (haveReplicasOf.empty()) {
-//       haveReplicasOf.push_back(after_me[after_me.size()-1]);
-//       haveReplicasOf.push_back(after_me[after_me.size()-2]);
-//     } else {
-//       assert(haveReplicasOf.size() == 2);
-//
-//
-//       newHaveRepsOf.push_back(after_me[after_me.size()-1]);
-//       newHaveRepsOf.push_back(after_me[after_me.size()-2]);
-//       if (!compare_nodes_vecs(haveReplicasOf, newHaveRepsOf)) {
-//         MYLOG2("ring change affected nodes I hold replicas for - need to check if I'm the new master of affected keys!");
-//       }
-//     }
   }
 }
 
