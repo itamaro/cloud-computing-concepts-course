@@ -65,6 +65,9 @@ private:
   set<int> completed_transactions;
   
   map<int, vector<int> > transaction_timeout;
+  
+  map<ReplicaType, vector<string> > reptype_to_key;
+  map<string, ReplicaType> key_to_reptype;
 
 public:
 	MP2Node(Member *memberNode, Params *par, EmulNet *emulNet, Log *log, Address *addressOfMember);

@@ -231,6 +231,8 @@ bool MP2Node::createKeyValue(string key, string value, ReplicaType replica) {
 	 * Implement this
 	 */
 	// Insert key, value, replicaType into the hash table
+  reptype_to_key[replica].push_back(key);
+  key_to_reptype[key] = replica;
   return ht->create(key, value);
 }
 
@@ -278,6 +280,11 @@ bool MP2Node::deletekey(string key) {
 	 * Implement this
 	 */
 	// Delete the key from the local hash table
+  if (key_to_reptype.find(key) != key_to_reptype.end()) {
+    auto& keyvec = reptype_to_key[key_to_reptype[key]];
+    keyvec.erase(remove(keyvec.begin(), keyvec.end(), key), keyvec.end());
+    key_to_reptype.erase(key);
+  }
   return ht->deleteKey(key);
 }
 
