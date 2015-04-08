@@ -275,6 +275,25 @@ void MP2Node::clientUpdate(string key, string value){
 	/*
 	 * Implement this
 	 */
+  int transID = transaction_keys.size();
+  transaction_type[transID] = UPDATE;
+  transaction_keys[transID] = key;
+  transaction_values[transID] = value;
+  transaction_timeout[par->getcurrtime() + TRANS_TIMEOUT].push_back(transID);
+  auto replicas = findNodes(key);
+  ReplicaType repType = PRIMARY;
+  for (auto replica : replicas) {
+    Message msgUpdate(
+      transID,  // transID
+      memberNode->addr,  // source address (me!)
+      UPDATE,  // message type
+      key,
+      value,
+      repType  // replica type
+    );
+    repType = (ReplicaType)(((int)repType) + 1);
+    int ret = emulNet->ENsend(&memberNode->addr, &replica.nodeAddress, msgUpdate.toString());
+  }
 }
 
 /**
@@ -353,6 +372,7 @@ bool MP2Node::updateKeyValue(string key, string value, ReplicaType replica) {
 	 * Implement this
 	 */
 	// Update key in local hash table and return true or false
+  return ht->update(key, value);
 }
 
 /**
@@ -419,6 +439,23 @@ void MP2Node::checkMessages() {
         }
         if (message.transID == -1) {
           MYLOG2("not replying to stabilization CREATE from " << message.fromAddr.getAddress());
+          //MYLOG2("not replying to stabilization CREATE from " << message.fromAddr.getAddress());
+        } else {
+          Message reply(message.transID, message.fromAddr, REPLY, success);
+          emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
+        }
+        break;
+      }
+      
+      case UPDATE: {
+        bool success = updateKeyValue(message.key, message.value, message.replica);
+        if (success) {
+          log->logUpdateSuccess(&message.fromAddr, false, message.transID, message.key, message.value);
+        } else {
+          log->logUpdateFail(&message.fromAddr, false, message.transID, message.key, message.value);
+        }
+        if (message.transID == -1) {
+          //MYLOG2("not replying to stabilization UPDATE from " << message.fromAddr.getAddress());
         } else {
           Message reply(message.transID, message.fromAddr, REPLY, success);
           emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
@@ -506,6 +543,15 @@ void MP2Node::checkMessages() {
                 break;
               }
               
+              case UPDATE: {
+                if (success_quorum) {
+                  log->logUpdateSuccess(&memberNode->addr, true, message.transID, transaction_keys[message.transID], transaction_values[message.transID]);
+                } else {
+                  log->logUpdateFail(&memberNode->addr, true, message.transID, transaction_keys[message.transID], transaction_values[message.transID]);
+                }
+                break;
+              }
+              
               case DELETE: {
                 if (success_quorum) {
                   log->logDeleteSuccess(&message.fromAddr, true, message.transID, transaction_keys[message.transID]);
@@ -532,6 +578,10 @@ void MP2Node::checkMessages() {
       switch (transaction_type[transID]) {
         case CREATE:
           log->logCreateFail(&memberNode->addr, true, transID, transaction_keys[transID], transaction_values[transID]);
+          break;
+
+        case UPDATE:
+          log->logUpdateFail(&memberNode->addr, true, transID, transaction_keys[transID], transaction_values[transID]);
           break;
         
         case READ:
