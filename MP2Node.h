@@ -39,6 +39,10 @@ using std::set;
 class MP2Node {
 private:
 	// Vector holding the next two neighbors in the ring who have my replicas
+  Node has_my_secondary;
+  Node has_my_tertiary;
+  Node have_secondary_of;
+  Node have_tertiary_of;
 	vector<Node> hasMyReplicas;
 	// Vector holding the previous two neighbors in the ring whose replicas I have
 	vector<Node> haveReplicasOf;

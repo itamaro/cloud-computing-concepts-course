@@ -9,6 +9,27 @@
 static stringstream my_stream2;
 #define MYLOG2(stream) my_stream2 << "{N" << memberNode->addr.getAddress() << " @" << par->getcurrtime() << "} " << stream << "\n"
 
+// string reprNodes(vector<Node> nodes) {
+//   stringstream mlist;
+//   for (auto node : nodes) {
+//     mlist << node.nodeAddress.getAddress() << "(" << node.nodeHashCode << "),";
+//   }
+//   return mlist.str();
+// }
+//
+// bool compare_nodes_vecs(vector<Node> vec1, vector<Node> vec2) {
+//   if (vec1.size() != 2 || vec2.size() != 2) {
+//     return false;
+//   }
+//   if (vec1[0].nodeAddress == vec2[0].nodeAddress && vec1[1].nodeAddress == vec2[1].nodeAddress) {
+//     return true;
+//   }
+//   if (vec1[0].nodeAddress == vec2[1].nodeAddress && vec1[1].nodeAddress == vec2[0].nodeAddress) {
+//     return true;
+//   }
+//   return false;
+// }
+
 /**
  * constructor
  */
@@ -55,22 +76,143 @@ void MP2Node::updateRing() {
 	 */
 	// Sort the list based on the hashCode
 	sort(curMemList.begin(), curMemList.end());
+  
+  vector<Node> before_me;
+  vector<Node> after_me;
+  bool found_me = false;
 
   stringstream mlist;
-  for (auto member : curMemList) {
-    mlist << member.nodeAddress.getAddress() << "(" << member.nodeHashCode << "),";
+  for (auto node : curMemList) {
+    mlist << node.nodeAddress.getAddress() << "(" << node.nodeHashCode << "),";
+    if (node.nodeAddress == memberNode->addr) {
+      found_me = true;
+    } else {
+      if (found_me) {
+        after_me.push_back(node);
+      } else {
+        before_me.push_back(node);
+      }
+    }
+  }
+  for (auto it = before_me.begin(); it != before_me.end(); it++) {
+    after_me.push_back(*it);
+  }
+  // for (auto it = after_me.rbegin(); it != after_me.rend(); it++) {
+  //   before_me.push_back(*it);
+  // }
+  stringstream before, after;
+  // for (auto node : before_me) {
+  //   before << node.nodeAddress.getAddress() << "(" << node.nodeHashCode << "),";
+  // }
+  for (auto node : after_me) {
+    after << node.nodeAddress.getAddress() << "(" << node.nodeHashCode << "),";
+  }
+  assert(after_me.size() >= 4);
+  
+  bool ring_changed = false, has_my_replicas_chaned = false, have_replicas_of_changed = false;
+  vector<Node> newHasMyReps;
+  vector<Node> newHaveRepsOf;
+  if (ring.size() != curMemList.size()) {
+    ring_changed = true;
+  } else {
+    for (int i; i < ring.size(); ++i) {
+      if (!(ring[i].nodeAddress == curMemList[i].nodeAddress)) {
+        ring_changed = true;
+        break;
+      }
+    }
   }
   
-  if (ring.empty()) {
-    MYLOG2("initializing ring from membership list: " + mlist.str());
+  if (ring_changed) {
+    if (ring.empty()) {
+      MYLOG2("initializing ring from membership list: " + mlist.str());
+      has_my_secondary = after_me[0];
+      has_my_tertiary = after_me[1];
+    } else {
+      MYLOG2("ring changed! rebuilding ring from membership list: " + mlist.str());
+    }
+    ring.clear();
+    //hasMyReplicas.clear();
+    haveReplicasOf.clear();
     for (auto node : curMemList) {
       ring.push_back(node);
     }
+    
+    if (!(has_my_secondary.nodeAddress == after_me[0].nodeAddress)) {
+      MYLOG2("my secondary changed to " << after_me[0].nodeAddress.getAddress());
+      has_my_secondary = after_me[0];
+      for (auto key : reptype_to_key[PRIMARY]) {
+        Message msgCreate(
+          -1,  // transID
+          memberNode->addr,  // source address (me!)
+          CREATE,  // message type
+          key,
+          ht->hashTable[key],
+          SECONDARY  // replica type
+        );
+        int ret = emulNet->ENsend(&memberNode->addr, &has_my_secondary.nodeAddress, msgCreate.toString());
+      }
+      for (auto key : reptype_to_key[SECONDARY]) {
+        Message msgCreate(
+          -1,  // transID
+          memberNode->addr,  // source address (me!)
+          CREATE,  // message type
+          key,
+          ht->hashTable[key],
+          TERTIARY  // replica type
+        );
+        int ret = emulNet->ENsend(&memberNode->addr, &has_my_secondary.nodeAddress, msgCreate.toString());
+      }
+    }
+    if (!(has_my_tertiary.nodeAddress == after_me[1].nodeAddress)) {
+      MYLOG2("my tertiary changed to " << after_me[1].nodeAddress.getAddress());
+      has_my_tertiary = after_me[1];
+      for (auto key : reptype_to_key[PRIMARY]) {
+        Message msgCreate(
+          -1,  // transID
+          memberNode->addr,  // source address (me!)
+          CREATE,  // message type
+          key,
+          ht->hashTable[key],
+          TERTIARY  // replica type
+        );
+        int ret = emulNet->ENsend(&memberNode->addr, &has_my_secondary.nodeAddress, msgCreate.toString());
+      }
+    }
+    
+    
+//     if (hasMyReplicas.empty()) {
+//       hasMyReplicas.push_back(after_me[0]);
+//       hasMyReplicas.push_back(after_me[1]);
+//     } else {
+//       assert(hasMyReplicas.size() == 2);
+//       //MYLOG2("has my replicas: " << reprNodes(hasMyReplicas));
+//       vector<Node> newReplicaNodes;
+//       for (int i=0; i < 2; ++i) {
+//         auto node = after_me[i];
+//         MYLOG2("checking node " << node.nodeAddress.getAddress());
+//         hasMyReplicas.push_back(node);
+//         if (!(node.nodeAddress == hasMyReplicas[0].nodeAddress) && !(node.nodeAddress == hasMyReplicas[1].nodeAddress)) {
+//           MYLOG2("ring change affected nodes that have my replicas - need to replicate my keys to node " << node.nodeAddress.getAddress());
+//           newReplicaNodes.push_back(node);
+//         }
+//       }
+//       hasMyReplicas.erase(hasMyReplicas.begin(), hasMyReplicas.begin()+2);
+//     }
+//     if (haveReplicasOf.empty()) {
+//       haveReplicasOf.push_back(after_me[after_me.size()-1]);
+//       haveReplicasOf.push_back(after_me[after_me.size()-2]);
+//     } else {
+//       assert(haveReplicasOf.size() == 2);
+//
+//
+//       newHaveRepsOf.push_back(after_me[after_me.size()-1]);
+//       newHaveRepsOf.push_back(after_me[after_me.size()-2]);
+//       if (!compare_nodes_vecs(haveReplicasOf, newHaveRepsOf)) {
+//         MYLOG2("ring change affected nodes I hold replicas for - need to check if I'm the new master of affected keys!");
+//       }
+//     }
   }
-	/*
-	 * Step 3: Run the stabilization protocol IF REQUIRED
-	 */
-	// Run stabilization protocol if the hash table size is greater than zero and if there has been a changed in the ring
 }
 
 /**
@@ -329,8 +471,12 @@ void MP2Node::checkMessages() {
         } else {
           log->logCreateFail(&message.fromAddr, false, message.transID, message.key, message.value);
         }
-        Message reply(message.transID, message.fromAddr, REPLY, success);
-        emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
+        if (message.transID == -1) {
+          MYLOG2("not replying to stabilization CREATE from " << message.fromAddr.getAddress());
+        } else {
+          Message reply(message.transID, message.fromAddr, REPLY, success);
+          emulNet->ENsend(&memberNode->addr, &message.fromAddr, reply.toString());
+        }
         break;
       }
       
