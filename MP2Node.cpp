@@ -455,7 +455,6 @@ void MP2Node::checkMessages() {
           log->logCreateFail(&message.fromAddr, false, message.transID, message.key, message.value);
         }
         if (message.transID == -1) {
-          MYLOG2("not replying to stabilization CREATE from " << message.fromAddr.getAddress());
           //MYLOG2("not replying to stabilization CREATE from " << message.fromAddr.getAddress());
         } else {
           Message reply(message.transID, message.fromAddr, REPLY, success);
@@ -531,7 +530,6 @@ void MP2Node::checkMessages() {
       }
     
       case REPLY: {
-        MYLOG2("Got REPLY message from " << message.fromAddr.getAddress() << " transaction id: " << message.transID);
         if (completed_transactions.find(message.transID) == completed_transactions.end()) {
           transactions[message.transID].push_back(message.fromAddr);
           bool fail_quorum=false, success_quorum=false;
@@ -539,13 +537,11 @@ void MP2Node::checkMessages() {
             success_replies[message.transID].push_back(message.fromAddr);
             if (success_replies[message.transID].size() >= QUORUM) {
               success_quorum = true;
-              MYLOG2("Got success quorum for transaction " << message.transID);
             }
           } else {
             fail_replies[message.transID].push_back(message.fromAddr);
             if (fail_replies[message.transID].size() >= QUORUM) {
               fail_quorum = true;
-              MYLOG2("Got failure quorum for transaction " << message.transID);
             }
           }
           if (success_quorum || fail_quorum) {
