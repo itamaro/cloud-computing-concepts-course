@@ -107,6 +107,8 @@ void MP2Node::updateRing() {
       MYLOG2("initializing ring from membership list: " + mlist.str());
       has_my_secondary = after_me[0];
       has_my_tertiary = after_me[1];
+      have_secondary_of = after_me[after_me.size()-1];
+      have_tertiary_of = after_me[after_me.size()-2];
     } else {
       MYLOG2("ring changed! rebuilding ring from membership list: " + mlist.str());
     }
@@ -156,6 +158,21 @@ void MP2Node::updateRing() {
           TERTIARY  // replica type
         );
         int ret = emulNet->ENsend(&memberNode->addr, &has_my_secondary.nodeAddress, msgCreate.toString());
+      }
+    }
+
+    if (!(have_secondary_of.nodeAddress == after_me[after_me.size()-1].nodeAddress)) {
+      have_secondary_of = after_me[after_me.size()-1];
+      MYLOG2("I should now hold secondary of " << have_secondary_of.nodeAddress.getAddress());
+      for (auto key : reptype_to_key[SECONDARY]) {
+        deletekey(key);
+      }
+    }
+    if (!(have_tertiary_of.nodeAddress == after_me[after_me.size()-2].nodeAddress)) {
+      have_tertiary_of = after_me[after_me.size()-2];
+      MYLOG2("I should now hold tertiary of " << have_tertiary_of.nodeAddress.getAddress());
+      for (auto key : reptype_to_key[TERTIARY]) {
+        deletekey(key);
       }
     }
   }
