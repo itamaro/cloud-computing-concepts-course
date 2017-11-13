@@ -29,8 +29,8 @@ echo "============================================"
 echo "Single Failure Scenario"
 echo "============================"
 if [ $verbose -eq 0 ]; then
-	make clean > /dev/null
-	make > /dev/null
+	make clean &> /dev/null
+	make &> /dev/null
 	./Application testcases/singlefailure.conf > /dev/null
 else
 	make clean
@@ -78,8 +78,8 @@ echo "============================================"
 echo "Multi Failure Scenario"
 echo "============================"
 if [ $verbose -eq 0 ]; then
-	make clean > /dev/null
-	make > /dev/null
+	make clean &> /dev/null
+	make &> /dev/null
 	./Application testcases/multifailure.conf > /dev/null
 else
 	make clean
@@ -141,8 +141,8 @@ echo "============================================"
 echo "Message Drop Single Failure Scenario"
 echo "============================"
 if [ $verbose -eq 0 ]; then
-	make clean > /dev/null
-	make > /dev/null
+	make clean &> /dev/null
+	make &> /dev/null
 	./Application testcases/msgdropsinglefailure.conf > /dev/null
 else
 	make clean

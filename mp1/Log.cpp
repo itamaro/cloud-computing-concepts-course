@@ -99,6 +99,8 @@ void Log::LOG(Address *addr, const char * str, ...) {
 		fprintf(fp, buffer);
 
 	}
+  
+  //printf("<<LOG>> %s [%d] %s\n", stdstring, par->getcurrtime(), buffer);
 
 	if(++numwrites >= MAXWRITES){
 		fflush(fp);

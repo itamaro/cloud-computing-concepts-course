@@ -7,6 +7,11 @@
 
 #include "MP1Node.h"
 
+
+#include <sstream>
+static stringstream my_stream;
+#define MYLOG(stream) my_stream << "{N" << memberNode->addr.getAddress() << " @" << par->getcurrtime() << "} " << stream << "\n"
+
 /*
  * Note: You can change/add any functions in MP1Node.{h,cpp}
  */

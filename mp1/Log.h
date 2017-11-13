@@ -20,6 +20,8 @@
 #define DBG_LOG "dbg.log"
 #define STATS_LOG "stats.log"
 
+//#define MYLOG(stream) cout << "{N" << memberNode->addr.getAddress() << " @" << par->getcurrtime() << "} " << stream << "\n"
+
 /**
  * CLASS NAME: Log
  *

@@ -50,7 +50,7 @@ def submit():
   # Attempt Submission with Challenge
   ch_resp = challengeResponse(login, password, ch)
 
-  output = subprocess.Popen(['sh', 'run.sh', str(partIdx)]).communicate()[0]
+  #output = subprocess.Popen(['sh', 'run.sh', str(partIdx)]).communicate()[0]
   (result, string) = submitSolution(login, ch_resp, sid, source(partIdx), \
                                   state, ch_aux)
 
